@@ -1,6 +1,7 @@
 'use client';
 
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useState } from 'react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Customized } from 'recharts';
 import React, { PureComponent } from 'react';
 import "./globals.css";
 var utc = require('dayjs/plugin/utc');
@@ -113,30 +114,48 @@ class CustomizedYAxisTick extends PureComponent {
   }
 }
 
+function SessionDiplay(props) {
+  console.log(props.session.session);
+  const submissions = props.session.session.map(
+    item => <li>{"[" + item.meter + "] " + item.title + "  " + item.points + "/" + item.maxPoints}</li>
+  );
+  return (
+    <ul>{submissions}</ul>
+  )
+};
+
+
 export default function Page() {
-  let timeline = require('./timeline_compressed.json');
+  let timeline = require('./timeline.json');
   let ytickcount = Math.min(1 + Math.ceil(Math.max(timeline[timeline.length - 1].rp, 1) / 75000), 9)
   let ticks = Array.from({length: ytickcount}, (_, i) => 75000*i)
-  let session = timeline[0]
+  const [session, setSession] = useState({session: []});
 
   return (
-    <AreaChart
-      width={600}
-      height={400}
-      data={timeline}
-      margin={{
-        top: 5,
-        right: 20,
-        left: 20,
-        bottom: 25,
-      }}
-    >
-      <CartesianGrid vertical={false}/>
-      <XAxis interval="equidistantPreserveStart" scale="utc" dataKey="epoch_end" type="number" domain={[timeline[0].epoch_start,timeline[timeline.length-1].epoch_end + 3600]} tick={<CustomizedXAxisTick />} allowDataOverflow/>
-      <YAxis type="number" ticks={ticks} tick={<CustomizedYAxisTick />} domain={[0, dataMax => Math.min(dataMax+10000, 635000)]} /> 
-      <Tooltip content={<CustomTooltip/>} />
-      <Area type="stepAfter" dataKey="sp" stackId="1"  stroke="rgba(55,57,154,0.2)" fill="rgba(55,57,154,0.2)" activeDot={false}/>
-      <Area type="stepAfter" dataKey="ep" stackId="1"  stroke="rgba(238,8,144,0.2)" fill="rgba(238,8,144,0.2)" activeDot={{ stroke: "rgb(254,226,19)", r: 2, strokeWidth: 4}}/>
-    </AreaChart>
+    <div>
+      <AreaChart
+        width={600}
+        height={400}
+        data={timeline}
+        onClick={(e) => {
+          let sess = e.activePayload[0].payload;
+          setSession(sess);
+        }}
+        margin={{
+          top: 5,
+          right: 20,
+          left: 20,
+          bottom: 25,
+        }}
+      >
+        <CartesianGrid vertical={false}/>
+        <XAxis interval="equidistantPreserveStart" scale="utc" dataKey="epoch_end" type="number" domain={[timeline[0].epoch_start,timeline[timeline.length-1].epoch_end + 3600]} tick={<CustomizedXAxisTick />} allowDataOverflow/>
+        <YAxis type="number" ticks={ticks} tick={<CustomizedYAxisTick />} domain={[0, dataMax => Math.min(dataMax+10000, 635000)]} /> 
+        <Tooltip content={<CustomTooltip/>} />
+        <Area type="stepAfter" dataKey="sp" stackId="1"  stroke="rgba(55,57,154,0.2)" fill="rgba(55,57,154,0.2)" activeDot={false}/>
+        <Area type="stepAfter" dataKey="ep" stackId="1"  stroke="rgba(238,8,144,0.2)" fill="rgba(238,8,144,0.2)" activeDot={{ stroke: "rgb(254,226,19)", r: 2, strokeWidth: 4}}/>
+      </AreaChart>
+      <SessionDiplay session={session}/>
+    </div>
   )
 }

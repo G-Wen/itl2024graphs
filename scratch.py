@@ -87,6 +87,7 @@ def generate_snapshots(sessions):
         'ep_gain': 0,
         'rp_gain': 0,
         'total_submissions': 0,
+        'session': [],
     })
 
     for session in sessions:
@@ -109,6 +110,7 @@ def generate_snapshots(sessions):
             'ep': ep,
             'rp': rp,
             'total_submissions': snapshots[-1]['total_submissions'] + len(session),
+            'session': session,
         }
         snapshots.append(snapshot)
 
@@ -124,6 +126,7 @@ def generate_snapshots(sessions):
     snapshots[-1]['session_end'] = now.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     snapshots[-1]['epoch_start'] = now.timestamp()
     snapshots[-1]['epoch_end'] = now.timestamp()
+    snapshots[-1]['session'] = []
     for point_type in ['rp', 'ep', 'sp']:
         snapshots[-1][point_type+'_gain'] = 0
 
@@ -132,7 +135,7 @@ def generate_snapshots(sessions):
 def generate_compressed_snapshots(snapshots):
     return [{key: snapshot[key] for key in ['session_start', 'session_end', 'sp', 'ep', 'rp', 'sp_gain', 'ep_gain', 'rp_gain', 'epoch_start', 'epoch_end', 'total_submissions']} for snapshot in snapshots]
 
-# G
+# Read export file, parse submissions, generate snapshot filesG
 with open(export_filename, encoding='utf-8') as json_data:
     info = json.load(json_data)
 
