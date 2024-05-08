@@ -117,7 +117,12 @@ class CustomizedYAxisTick extends PureComponent {
 function SessionDiplay(props) {
   console.log(props.session.session);
   const submissions = props.session.session.map(
-    item => <li>{"[" + item.meter + "] " + item.title + "  " + item.points + "/" + item.maxPoints}</li>
+    item => 
+      <div>
+        <li>{"[" + item.meter + "] " + item.title + "  " + item.points + "/" + item.maxPoints}</li>
+        <li>{"rpg: " + item.rp_gain + " spg: " + item.sp_gain + " epg: " + item.ep_gain + " pointg: " + item.point_gain}</li>
+        <li>{"-"}</li>
+      </div>
   );
   return (
     <ul>{submissions}</ul>

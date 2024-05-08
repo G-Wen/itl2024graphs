@@ -3,8 +3,7 @@ import math
 from dateutil import parser, tz
 from datetime import timedelta, datetime
 
-export_filename = 'export.json'
-submissions = []
+export_filename = '2export.json'
 top_75 = []
 best_score = dict()
 ep_table = {x: [] for x in range(7, 15)}
@@ -26,6 +25,9 @@ def generate_top_75(best_score):
 
     return top_75[:75]
 
+def get_song_points(top_75):
+    return sum(x['points'] for x in top_75)
+
 def generate_ep_table(best_score):
     ep_table = {x: [] for x in range(7, 15)}
 
@@ -39,6 +41,9 @@ def generate_ep_table(best_score):
 
     return ep_table
 
+def get_ex_points(ep_table):
+    return sum(sum(x['ep'] for x in ep_table[meter]) for meter in ep_table)
+
 def update_best_scores(new_scores, best_score=None):
     if best_score is None:
         best_score = dict()
@@ -51,6 +56,60 @@ def update_best_scores(new_scores, best_score=None):
             best_score[id] = entry
     
     return best_score
+
+def parse_submissions(info):
+    submissions = []
+    for chart in info['charts']:
+        for score in chart['scores']:
+            entry = {
+                'dateAdded': score['dateAdded'],
+                'id': chart['id'],
+                'title': chart['titleRomaji'] if chart['titleRomaji'] else chart['title'],
+                'meter': chart['meter'],
+                'maxPoints': chart['points'],
+                'ex': score['ex'],
+                'points': score['points'],
+                'ep': ex_to_ep(score['ex']),
+            }
+            submissions.append(entry)
+    
+    submissions.sort(key=lambda x: x['dateAdded'])
+    return submissions
+
+def parse_session(session, best_score=None, top_75=None, ep_table=None):
+    if ep_table is None:
+        ep_table = {x: [] for x in range(7, 15)}
+    if best_score is None:
+        best_score = dict()
+    if top_75 is None:
+        top_75 = []
+
+    sp = get_song_points(top_75)
+    ep = get_ex_points(ep_table)
+    
+    for submission in session:
+        if submission['id'] == 295:
+            pass
+
+        if submission['id'] not in best_score:
+            submission['ex_gain'] = submission['ex']
+            submission['point_gain'] = submission['points']
+        else:
+            submission['ex_gain'] = max(submission['ex'] - best_score[submission['id']]['ex'], 0)
+            submission['point_gain'] = max(submission['points'] - best_score[submission['id']]['points'], 0)
+
+        best_score = update_best_scores([submission], best_score)
+
+        top_75 = generate_top_75(best_score)
+        ep_table = generate_ep_table(best_score)
+        new_sp, new_ep = get_song_points(top_75), get_ex_points(ep_table)
+        submission['sp_gain'] = new_sp - sp
+        submission['ep_gain'] = new_ep - ep
+        submission['rp_gain'] = new_sp - sp + new_ep - ep
+
+        sp, ep = new_sp, new_ep
+
+    return best_score, top_75, ep_table, session #, song_ex_gains, song_point_gains
 
 def group_into_sessions(submissions):
     sessions = []
@@ -93,11 +152,10 @@ def generate_snapshots(sessions):
     for session in sessions:
         session_start = session[0]['dateAdded']
         session_end = session[-1]['dateAdded']
-        best_score = update_best_scores(session, best_score)
-        top_75 = generate_top_75(best_score)
-        ep_table= generate_ep_table(best_score)
-        sp = sum(x['points'] for x in top_75)
-        ep = sum((sum(x['ep'] for x in ep_table[key]) for key in ep_table))
+        best_score, top_75, ep_table, session = parse_session(session, best_score, top_75, ep_table)
+        
+        sp = get_song_points(top_75)
+        ep = get_ex_points(ep_table)
         rp = sp + ep
         snapshot = {
             'session_start': session_start,
@@ -139,21 +197,8 @@ def generate_compressed_snapshots(snapshots):
 with open(export_filename, encoding='utf-8') as json_data:
     info = json.load(json_data)
 
-for chart in info['charts']:
-    for score in chart['scores']:
-        entry = {
-            'dateAdded': score['dateAdded'],
-            'id': chart['id'],
-            'title': chart['titleRomaji'] if chart['titleRomaji'] else chart['title'],
-            'meter': chart['meter'],
-            'maxPoints': chart['points'],
-            'ex': score['ex'],
-            'points': score['points'],
-            'ep': ex_to_ep(score['ex']),
-        }
-        submissions.append(entry)
+submissions = parse_submissions(info)
 
-submissions.sort(key=lambda x: x['dateAdded'])
 sessions = group_into_sessions(submissions)
 by_entry = [[x] for x in submissions]
 snapshots = generate_snapshots(sessions)
